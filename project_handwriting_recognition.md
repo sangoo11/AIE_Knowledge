@@ -173,11 +173,25 @@ print("✅ Tất cả thư viện đã được import thành công!")
 # ============================================================
 # CELL 3: Tải dữ liệu EMNIST (Balanced dataset)
 # ============================================================
+# Do link tải mặc định của thư viện có thể bị lỗi (chặn truy cập),
+# ta sẽ tải thủ công file zip chứa dữ liệu gốc trước.
 
-# Tải dữ liệu training (dùng để dạy mô hình)
+import os
+
+# 1. Tạo thư mục cache và xóa file lỗi (nếu có)
+!mkdir -p ~/.cache/emnist
+!rm -f ~/.cache/emnist/emnist.zip
+
+# 2. Tải thủ công file dataset gzip (~536MB)
+print("Đang tải dữ liệu gốc (gzip.zip)...")
+!wget --user-agent="Mozilla/5.0" -q --show-progress \
+      -O ~/.cache/emnist/emnist.zip \
+      "https://biometrics.nist.gov/cs_links/EMNIST/gzip.zip"
+
+print("\nĐã tải xong! Đang trích xuất dữ liệu...")
+
+# 3. Tải dữ liệu training & test (thư viện sẽ dùng file vừa tải)
 X_train, y_train = extract_training_samples('balanced')
-
-# Tải dữ liệu test (dùng để đánh giá mô hình)
 X_test, y_test = extract_test_samples('balanced')
 
 print("=" * 50)
