@@ -194,6 +194,13 @@ print("\nĐã tải xong! Đang trích xuất dữ liệu...")
 X_train, y_train = extract_training_samples('balanced')
 X_test, y_test = extract_test_samples('balanced')
 
+# 4. Xoay (Transpose) ảnh về đúng chiều đọc thông thường
+# Mặc định EMNIST lưu ảnh ở dạng cột-trước (column-major), dẫn đến ảnh bị xoay 90 độ và lật.
+# Ta hoán đổi trục (axis 1 và 2) để đưa các ảnh về đúng chiều đứng thẳng tự nhiên.
+print("Đang xoay ảnh EMNIST về đúng chiều đọc thông thường...")
+X_train = np.transpose(X_train, (0, 2, 1))
+X_test  = np.transpose(X_test, (0, 2, 1))
+
 print("=" * 50)
 print("📊 THÔNG TIN DATASET")
 print("=" * 50)
@@ -202,6 +209,7 @@ print(f"Test set:      {X_test.shape[0]:,} ảnh")
 print(f"Kích thước ảnh: {X_train.shape[1]}x{X_train.shape[2]} pixels")
 print(f"Số classes:    {len(np.unique(y_train))}")
 print(f"Giá trị pixel: min={X_train.min()}, max={X_train.max()}")
+```,StartLine:193,TargetContent:
 ```
 
 **✅ Output mong đợi:**
@@ -355,62 +363,69 @@ Giá trị pixel: min=0.0, max=1.0
 
 def build_model(num_classes):
     """
-    Xây dựng CNN model cho nhận dạng ký tự viết tay.
+    Xây dựng CNN model cải tiến cho nhận dạng ký tự viết tay.
     
-    Kiến trúc:
-    - 2 khối Conv2D + MaxPooling (trích xuất đặc trưng)
-    - 1 khối Dense + Dropout (phân loại)
-    - Output layer với Softmax (xác suất)
+    Cải tiến chống Overfitting:
+    1. Tích hợp lớp Data Augmentation vào đầu mô hình (xoay, dịch chuyển, zoom nhẹ).
+    2. Áp dụng L2 Regularization (weight decay) lên toàn bộ các lớp học (Conv2D & Dense).
+    3. Tinh chỉnh các tỷ lệ Dropout (0.2, 0.25, 0.3 ở Conv và 0.4 ở Dense).
     """
+    # Định nghĩa chuỗi Data Augmentation (chỉ kích hoạt khi train, tự tắt khi predict)
+    data_augmentation = keras.Sequential([
+        # Xoay nhẹ từ -10 đến +10 độ (factor=0.03 tương đương ~0.03*360 độ) để chống lệch góc viết
+        layers.RandomRotation(factor=0.03, fill_mode='constant', fill_value=0.0),
+        
+        # Dịch chuyển tối đa 8% chiều rộng/cao để chống viết lệch tâm
+        layers.RandomTranslation(height_factor=0.08, width_factor=0.08, fill_mode='constant', fill_value=0.0),
+        
+        # Co giãn nhẹ tối đa 8%
+        layers.RandomZoom(height_factor=0.08, width_factor=0.08, fill_mode='constant', fill_value=0.0),
+    ])
+
+    # Thiết lập L2 Regularization (phạt trọng số lớn)
+    l2_reg = keras.regularizers.l2(1e-4)
+
     model = keras.Sequential([
         # ===== INPUT LAYER =====
         keras.Input(shape=(28, 28, 1)),  # Ảnh 28x28, 1 channel (grayscale)
         
+        # ===== DATA AUGMENTATION =====
+        data_augmentation,
+        
         # ===== KHỐI 1: Trích xuất đặc trưng cơ bản =====
-        # Conv2D: 32 bộ lọc 3x3, tìm các đặc trưng đơn giản (cạnh, góc)
-        layers.Conv2D(32, (3, 3), activation='relu', padding='same'),
-        # BatchNormalization: Chuẩn hóa output, giúp train ổn định hơn
+        layers.Conv2D(32, (3, 3), activation='relu', padding='same', kernel_regularizer=l2_reg),
         layers.BatchNormalization(),
-        # Conv2D thứ 2: Tìm thêm đặc trưng
-        layers.Conv2D(32, (3, 3), activation='relu', padding='same'),
+        layers.Conv2D(32, (3, 3), activation='relu', padding='same', kernel_regularizer=l2_reg),
         layers.BatchNormalization(),
-        # MaxPooling: Giảm kích thước 28x28 → 14x14
         layers.MaxPooling2D((2, 2)),
-        # Dropout: Tắt 25% neuron ngẫu nhiên → chống overfitting
-        layers.Dropout(0.25),
+        layers.Dropout(0.2),
         
         # ===== KHỐI 2: Trích xuất đặc trưng phức tạp =====
-        # Conv2D: 64 bộ lọc, tìm đặc trưng phức tạp hơn (hình dạng, nét chữ)
-        layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
+        layers.Conv2D(64, (3, 3), activation='relu', padding='same', kernel_regularizer=l2_reg),
         layers.BatchNormalization(),
-        layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
+        layers.Conv2D(64, (3, 3), activation='relu', padding='same', kernel_regularizer=l2_reg),
         layers.BatchNormalization(),
-        # MaxPooling: Giảm kích thước 14x14 → 7x7
         layers.MaxPooling2D((2, 2)),
         layers.Dropout(0.25),
         
         # ===== KHỐI 3: Trích xuất đặc trưng cao cấp =====
-        layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
+        layers.Conv2D(128, (3, 3), activation='relu', padding='same', kernel_regularizer=l2_reg),
         layers.BatchNormalization(),
-        # MaxPooling: Giảm kích thước 7x7 → 3x3
         layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
+        layers.Dropout(0.3),
         
         # ===== CLASSIFICATION LAYERS =====
-        # Flatten: Chuyển 3D (3x3x128) → 1D (1152)
         layers.Flatten(),
         
-        # Dense: Fully connected layer
-        layers.Dense(256, activation='relu'),
+        layers.Dense(256, activation='relu', kernel_regularizer=l2_reg),
         layers.BatchNormalization(),
-        layers.Dropout(0.5),  # Dropout cao hơn ở FC layer
+        layers.Dropout(0.4),
         
-        layers.Dense(128, activation='relu'),
+        layers.Dense(128, activation='relu', kernel_regularizer=l2_reg),
         layers.BatchNormalization(),
-        layers.Dropout(0.5),
+        layers.Dropout(0.4),
         
         # ===== OUTPUT LAYER =====
-        # Softmax: Output xác suất cho mỗi class
         layers.Dense(num_classes, activation='softmax')
     ])
     
@@ -729,47 +744,59 @@ for _ in range(10):
 
 def preprocess_image(image_path):
     """
-    Tiền xử lý ảnh từ file → format phù hợp với model.
+    Tiền xử lý ảnh thực tế nâng cao → format chuẩn hóa phù hợp với model.
     
-    Pipeline:
-    1. Đọc ảnh
-    2. Chuyển sang grayscale
-    3. Resize về 28x28
-    4. Đảo ngược màu (trắng→đen, đen→trắng)
-    5. Chuẩn hóa pixel [0, 1]
-    6. Reshape cho model
-    
-    Args:
-        image_path: Đường dẫn tới file ảnh
-    
-    Returns:
-        processed_img: Ảnh đã xử lý, shape (1, 28, 28, 1)
-        display_img:   Ảnh để hiển thị
+    Quy trình:
+    1. Đọc ảnh thang xám (grayscale).
+    2. Phân ngưỡng Otsu để binarize và đảo ngược màu (chữ trắng, nền đen).
+    3. Tự động crop sát vùng chữ (loại bỏ khoảng trắng rìa ảnh bị thừa).
+    4. Căn giữa và tạo khung vuông kèm padding (giữ nguyên tỉ lệ chữ, tránh méo chữ).
+    5. Resize về 28x28 và chuẩn hóa pixel [0, 1].
+    6. Reshape về (1, 28, 28, 1).
     """
-    # 1. Đọc ảnh
+    # 1. Đọc ảnh thang xám
     img = cv2.imread(image_path)
     if img is None:
         raise FileNotFoundError(f"Không tìm thấy ảnh: {image_path}")
-    
-    # 2. Chuyển sang grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     
-    # 3. Resize về 28x28 (kích thước dataset)
-    resized = cv2.resize(gray, (28, 28), interpolation=cv2.INTER_AREA)
+    # 2. Phân ngưỡng Otsu tự động binarize và đảo ngược màu (nền đen 0, chữ trắng 255)
+    # Rất hiệu quả khi ảnh thực tế có bóng mờ hoặc độ tương phản không đều.
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     
-    # Lưu bản hiển thị
+    # 3. Cắt sát vùng có chữ (Crop to Bounding Box)
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if len(contours) > 0:
+        # Tìm contour có diện tích lớn nhất (giả định là chữ viết tay chính)
+        c = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(c)
+        cropped = thresh[y:y+h, x:x+w]
+    else:
+        cropped = thresh
+        w, h = thresh.shape[1], thresh.shape[0]
+        
+    # 4. Đưa chữ vào giữa ảnh hình vuông để giữ nguyên tỷ lệ (aspect ratio)
+    max_dim = max(w, h)
+    square = np.zeros((max_dim, max_dim), dtype=np.uint8)
+    
+    # Tính toán tọa độ đặt chữ vào giữa
+    dx = (max_dim - w) // 2
+    dy = (max_dim - h) // 2
+    square[dy:dy+h, dx:dx+w] = cropped
+    
+    # 5. Thêm padding viền an toàn giống EMNIST (~15% kích thước)
+    pad_size = int(max_dim * 0.15) if max_dim > 0 else 1
+    padded = cv2.copyMakeBorder(square, pad_size, pad_size, pad_size, pad_size, 
+                                cv2.BORDER_CONSTANT, value=0)
+    
+    # 6. Resize về kích thước 28x28 của dataset
+    resized = cv2.resize(padded, (28, 28), interpolation=cv2.INTER_AREA)
     display_img = resized.copy()
     
-    # 4. ĐẢO NGƯỢC MÀU (Quan trọng!)
-    # Ảnh gốc: nền trắng (255), chữ đen (0)
-    # EMNIST:   nền đen (0),    chữ trắng (255)
-    inverted = 255 - resized
+    # 7. Chuẩn hóa pixel từ [0, 255] → [0, 1]
+    normalized = resized.astype('float32') / 255.0
     
-    # 5. Chuẩn hóa [0, 255] → [0, 1]
-    normalized = inverted.astype('float32') / 255.0
-    
-    # 6. Reshape: (28, 28) → (1, 28, 28, 1)
-    # Thêm batch dimension và channel dimension
+    # 8. Reshape cho model: (28, 28) → (1, 28, 28, 1)
     processed = normalized.reshape(1, 28, 28, 1)
     
     return processed, display_img
@@ -1074,28 +1101,50 @@ html_code = """
 """
 
 def predict_from_canvas(data_url):
-    """Nhận ảnh từ canvas, xử lý và dự đoán."""
+    """Nhận ảnh từ canvas, xử lý nâng cao và dự đoán."""
     import base64
     from io import BytesIO
     
-    # Decode base64 image
+    # 1. Decode base64 image sang ảnh PIL thang xám
     header, data = data_url.split(',', 1)
     image_data = base64.b64decode(data)
     image = Image.open(BytesIO(image_data)).convert('L')  # Grayscale
     
-    # Resize về 28x28
-    image = image.resize((28, 28), Image.LANCZOS)
+    # Chuyển sang mảng numpy để xử lý bằng OpenCV
+    img_np = np.array(image)
     
-    # Convert to array
-    img_array = np.array(image).astype('float32')
+    # 2. Phân ngưỡng Otsu và đảo màu (Canvas vẽ nét đen trên nền trắng)
+    _, thresh = cv2.threshold(img_np, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     
-    # Invert (trắng→đen, đen→trắng) vì EMNIST dùng nền đen
-    img_array = 255 - img_array
+    # 3. Cắt sát nét vẽ (Crop to Bounding Box)
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if len(contours) > 0:
+        c = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(c)
+        cropped = thresh[y:y+h, x:x+w]
+    else:
+        cropped = thresh
+        w, h = thresh.shape[1], thresh.shape[0]
+        
+    # 4. Đưa vào giữa khung hình vuông
+    max_dim = max(w, h)
+    square = np.zeros((max_dim, max_dim), dtype=np.uint8)
+    dx = (max_dim - w) // 2
+    dy = (max_dim - h) // 2
+    square[dy:dy+h, dx:dx+w] = cropped
     
-    # Normalize
-    img_array = img_array / 255.0
+    # 5. Thêm padding an toàn (~15% kích thước)
+    pad_size = int(max_dim * 0.15) if max_dim > 0 else 1
+    padded = cv2.copyMakeBorder(square, pad_size, pad_size, pad_size, pad_size, 
+                                cv2.BORDER_CONSTANT, value=0)
     
-    # Reshape for model
+    # 6. Resize về 28x28
+    resized = cv2.resize(padded, (28, 28), interpolation=cv2.INTER_AREA)
+    
+    # 7. Chuẩn hóa pixel [0, 1]
+    img_array = resized.astype('float32') / 255.0
+    
+    # 8. Reshape cho model: (1, 28, 28, 1)
     img_array = img_array.reshape(1, 28, 28, 1)
     
     # Predict
