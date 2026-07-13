@@ -934,13 +934,14 @@ print("🔮 BẮT ĐẦU DỰ ĐOÁN")
 print("=" * 50)
 
 # --- Dự đoán ảnh tạo bằng code ---
-for char in test_chars:
-    filename = f"test_{char}.png"
-    if os.path.exists(filename):
-        print(f"\n--- Dự đoán file: {filename} ---")
-        predicted_char, confidence = predict_character(
-            filename, model, label_to_char, top_k=5
-        )
+if 'test_chars' in dir() and test_chars:
+    for char in test_chars:
+        filename = f"test_{char}.png"
+        if os.path.exists(filename):
+            print(f"\n--- Dự đoán file: {filename} ---")
+            predicted_char, confidence = predict_character(
+                filename, model, label_to_char, top_k=5
+            )
 
 # --- Dự đoán ảnh upload (nếu có) ---
 if 'uploaded_files' in dir() and uploaded_files:
