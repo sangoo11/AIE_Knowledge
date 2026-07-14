@@ -8,6 +8,22 @@
 
 ---
 
+## 📈 So Sánh Các Điểm Cải Tiến vs Version 1.0
+
+Dưới đây là bảng tổng hợp các điểm cải tiến của phiên bản 2.0 so với [version 1.0](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_1.0.md):
+
+| Khía cạnh so sánh | Phiên bản 1.0 | Phiên bản 2.0 (Cải tiến) | Tác dụng & Ý nghĩa cải tiến | Liên kết mã nguồn |
+| :--- | :--- | :--- | :--- | :--- |
+| **Xử lý xoay dữ liệu gốc (EMNIST)** | Load dữ liệu thô và huấn luyện trực tiếp. Ảnh mặc định bị xoay ngang 90° và lật do định dạng của dataset. | Sử dụng `np.transpose(X, (0, 2, 1))` để hoán đổi trục đứng/ngang cho cả tập Train và Test ngay sau khi tải. | **Tránh "Bẫy xoay ảnh EMNIST"**: Đưa dữ liệu huấn luyện về đúng chiều đọc thẳng đứng tự nhiên, giúp mô hình học ký tự thực tế chính xác hơn. | [project_handwriting_recognition_2.0.md:L197-202](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md#L197-L202) |
+| **Tăng cường dữ liệu (Data Augmentation)** | Không sử dụng. Mô hình dễ bị overfitting do dữ liệu tĩnh quá hoàn hảo. | Tích hợp lớp Augmentation (`RandomRotation`, `RandomTranslation`, `RandomZoom` tối đa 8-10%) trực tiếp vào đầu mô hình. | **Tăng tính tổng quát hóa**: Tạo ra vô số biến thể ngẫu nhiên khi huấn luyện (xoay nhẹ, dịch chuyển lệch tâm, thu phóng) mà không tốn chi phí thu thập thêm ảnh thực tế. | [project_handwriting_recognition_2.0.md:L373-383](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md#L373-L383) |
+| **Ràng buộc trọng số (Regularization)** | Không sử dụng L2 Regularization. Chỉ sử dụng Dropout cố định (0.25 ở Conv, 0.5 ở Dense). | - Thêm **L2 Regularization** (`l2(1e-4)`) vào tất cả các lớp Conv2D và Dense.<br>- Tinh chỉnh Dropout tăng dần theo chiều sâu (0.2 $\rightarrow$ 0.25 $\rightarrow$ 0.3 ở Conv) và giảm xuống 0.4 ở Dense. | **Chống Overfitting chiều sâu**: Phạt trọng số lớn để giữ mô hình không quá nhạy cảm với nhiễu hoặc nét bút đậm nhạt khác nhau. Tối ưu hóa Dropout giúp mô hình hội tụ tốt hơn. | [project_handwriting_recognition_2.0.md:L385-430](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md#L385-L430) |
+| **Quy trình Tiền xử lý ảnh thực tế (`preprocess_image`)** | **Đơn giản:**<br>1. Chuyển xám.<br>2. Resize trực tiếp về 28x28.<br>3. Đảo màu đơn giản bằng phép trừ `255 - resized`. | **Nâng cao:**<br>1. Phân ngưỡng Otsu tự động binarize và đảo màu.<br>2. Crop sát chữ viết (Bounding Box).<br>3. Căn giữa khung vuông để bảo toàn tỷ lệ (Aspect Ratio).<br>4. Thêm viền đệm an toàn (Padding ~15%). | **Xóa nhiễu & Tránh méo hình học**: Loại bỏ hoàn toàn bóng mờ/vết bẩn trên giấy. Căn lề và tạo viền đen giúp cấu trúc ảnh thực tế tương thích 100% với phân phối của bộ EMNIST. | [project_handwriting_recognition_2.0.md:L745-802](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md#L745-L802) |
+| **Ứng dụng Canvas vẽ tay Colab (`predict_from_canvas`)** | Vẽ canvas $\rightarrow$ Resize thẳng về 28x28 $\rightarrow$ Đảo màu đơn giản. Tỷ lệ đoán trúng thấp nếu vẽ lệch tâm hoặc nét nhỏ. | Tích hợp toàn bộ pipeline tiền xử lý nâng cao (Otsu, Contour Crop, Square Centering, Padding) vào hàm nhận dạng từ canvas. | **Nâng cao trải nghiệm người dùng**: Chữ vẽ tay trên canvas dù to, nhỏ, lệch góc vẫn được tự động định vị lại hoàn hảo trước khi đưa vào mô hình, tăng tỷ lệ đoán đúng thực tế. | [project_handwriting_recognition_2.0.md:L1104-1148](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md#L1104-L1164) |
+| **Cơ chế dừng sớm (Early Stopping)** | Có Early Stopping nhưng chưa tối ưu số lượng Epoch tối đa. | Tăng số Epoch tối đa lên `40` để `EarlyStopping` tự động quyết định điểm dừng tốt nhất và phục hồi trọng số tốt nhất. | **Tiết kiệm thời gian & Tránh học vẹt**: Ngăn chặn mô hình tiếp tục học thuộc lòng khi Loss trên tập kiểm thử (Validation Loss) bắt đầu tăng ngược trở lại. | [overfitting_solution_log_2.0.md:L158-170](file:///d:/AI%20Engineer/AIE_Knowledge/overfitting_solution_log_2.0.md#L158-L170) |
+
+---
+
+
 ## 📋 Tổng Quan Dự Án
 
 ```
