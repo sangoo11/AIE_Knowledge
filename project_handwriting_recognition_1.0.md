@@ -8,6 +8,17 @@
 
 ---
 
+## 📝 Tóm Tắt Phiên Bản 1.0 (Baseline)
+- **Trạng thái**: Phiên bản cơ sở (Baseline) - Phiên bản đầu tiên để làm quen với các khái niệm và xây dựng mô hình đơn giản.
+- **Đặc điểm**: Sử dụng kiến trúc CNN cơ bản, huấn luyện trực tiếp trên dữ liệu thô EMNIST (chưa xử lý xoay ảnh), tiền xử lý ảnh thực tế đơn giản (chỉ đảo màu và resize).
+- **Hạn chế**: 
+  - Mô hình gặp hiện tượng **Overfitting** nặng (độ chính xác tập train ~99% nhưng validation/test chỉ ~86%).
+  - Nhận dạng kém trên ảnh vẽ canvas hoặc ảnh thực tế do "bẫy" xoay ảnh EMNIST và tiền xử lý làm méo chữ.
+- **Hướng nâng cấp**: Các vấn đề trên được giải quyết toàn diện trong [Version 2.0](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md) bằng cách xoay dữ liệu, thêm Data Augmentation, Regularization (L2) và nâng cấp tiền xử lý ảnh thực tế.
+
+---
+
+
 ## 📋 Tổng Quan Dự Án
 
 ```
@@ -705,6 +716,30 @@ for _ in range(10):
 ```
 
 **✅ Output mong đợi:** Heatmap confusion matrix + danh sách các cặp ký tự hay bị nhầm (ví dụ: 'g' ↔ '9', 'l' ↔ '1').
+
+---
+
+## Bước 12.1: Phân Tích Hiện Tượng Overfitting (Quá Khớp) ở Bản 1.0
+
+Sau khi chạy xong quá trình huấn luyện và đánh giá ở các bước trên, bạn có thể nhận thấy một vấn đề lớn: **Mô hình học rất tốt trên tập huấn luyện nhưng lại kém khi gặp dữ liệu mới**. Đây chính là hiện tượng **Overfitting (Quá khớp)**.
+
+### 1. Định nghĩa đơn giản
+Hãy tưởng tượng mô hình AI giống như một học sinh chuẩn bị đi thi:
+- **Học hiểu (Generalization)**: Học sinh hiểu bản chất công thức, khi đi thi gặp đề bài biến thể (Validation/Test Set hoặc Ảnh thực tế) vẫn tự giải được.
+- **Học thuộc lòng (Overfitting)**: Học sinh học vẹt toàn bộ đáp án của các đề thi thử (Training Set). Khi đi thi thật, nếu đề bài đổi số hay đổi góc nhìn một chút, học sinh đó hoàn toàn bó tay.
+
+### 2. Dấu hiệu nhận biết trên biểu đồ của Bản 1.0
+Nhìn vào biểu đồ vẽ ở **Bước 10**:
+- Độ chính xác trên tập huấn luyện (**Train Accuracy**) rất cao (đạt tới **~99%**), nhưng độ chính xác trên tập kiểm thử (**Validation/Test Accuracy**) lại thấp hơn hoặc chững lại ở mức **~86%**.
+- Độ hao hụt trên tập huấn luyện (**Train Loss**) giảm liên tục về sát 0, trong khi độ hao hụt trên tập kiểm thử (**Validation Loss**) giảm xuống một mức nào đó (khoảng epoch 10) rồi bắt đầu **tăng ngược trở lại**.
+
+### 3. Nguyên nhân cốt lõi trong Bản 1.0
+Tại sao baseline CNN của chúng ta lại bị quá khớp? Có 3 lý do chính:
+1. **Thiếu sự đa dạng trong dữ liệu training (Static Data)**: Tập dữ liệu EMNIST Balanced mặc dù lớn (112,800 ảnh) nhưng vẫn là các ảnh tĩnh đã được chuẩn hóa cố định. Mô hình dễ dàng học thuộc từng vị trí pixel cụ thể.
+2. **Kiến trúc mô hình quá phức tạp so với dữ liệu**: Kiến trúc CNN với 3 khối Conv2D và các lớp Dense lớn chứa khoảng **~500k tham số (parameters)**. Nó có quá nhiều "bộ nhớ" nên nó chọn cách học thuộc lòng thay vì tự tìm quy luật chung của nét chữ.
+3. **Không có cơ chế ràng buộc và dừng sớm hợp lý**: Chúng ta để mô hình tự do học qua nhiều epoch mà không có các lớp ràng buộc trọng số hay kỹ thuật cản trở việc học thuộc, cũng như chưa tối ưu hóa cơ chế dừng sớm (`EarlyStopping`).
+
+> **💡 Giải pháp**: Để khắc phục triệt để tình trạng này, chúng ta cần áp dụng các kỹ thuật như **Data Augmentation** (tăng cường dữ liệu bằng cách xoay/dịch chuyển ngẫu nhiên), **Regularization (L2)** (phạt trọng số lớn), tối ưu hóa **Dropout**, và chỉnh sửa cơ chế dừng sớm. Các giải pháp này được tích hợp toàn diện trong [Version 2.0](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md).
 
 ---
 
