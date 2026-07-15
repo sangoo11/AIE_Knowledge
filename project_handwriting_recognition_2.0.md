@@ -16,6 +16,30 @@
   3. **Regularization (Ràng buộc trọng số)**: Thêm L2 Regularization (`l2(1e-4)`) cho toàn bộ lớp Conv2D và Dense, kết hợp Dropout tinh chỉnh nâng cao.
   4. **Tiền xử lý ảnh nâng cao**: Binarize bằng Otsu khử nhiễu nền, tìm contour cắt sát nét chữ (Bounding Box Crop), và căn lề khung vuông kèm padding viền đen 15%.
   5. **Tối ưu huấn luyện**: Tăng số lượng epoch và tối ưu hóa Early Stopping để tự động dừng ở điểm tốt nhất.
+- **Chi tiết các Cell thay đổi cụ thể**:
+  - **[CELL 3](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md#L225-L264) (Tải Dataset)**:
+    - *Version 1.0*: Tải dữ liệu thô EMNIST trực tiếp.
+    - *Version 2.0*: Bổ sung dòng code hoán đổi trục dữ liệu:
+      ```python
+      X_train = np.transpose(X_train, (0, 2, 1))
+      X_test  = np.transpose(X_test, (0, 2, 1))
+      ```
+  - **[CELL 7](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md#L495-L574) (Thiết kế CNN)**:
+    - *Version 1.0*: Mô hình CNN đơn giản không áp dụng Data Augmentation, không có L2 Regularization, sử dụng Dropout cố định ($0.25$ ở các lớp Conv, $0.5$ ở lớp Dense).
+    - *Version 2.0*:
+      - Thêm một `Sequential` con làm lớp `data_augmentation` ngay đầu mô hình (xoay, dịch chuyển, phóng to/thu nhỏ ngẫu nhiên).
+      - Áp dụng `kernel_regularizer=keras.regularizers.l2(1e-4)` cho tất cả lớp Conv2D và Dense.
+      - Tinh chỉnh Dropout tăng dần theo độ sâu ($0.2 \rightarrow 0.25 \rightarrow 0.3$) ở các lớp Conv và giảm xuống $0.4$ ở các lớp Dense.
+  - **[CELL 14](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md#L876-L938) (Hàm `preprocess_image`)**:
+    - *Version 1.0*: Đọc ảnh xám, resize thô về $28 \times 28$, và đảo ngược màu đơn giản bằng phép trừ `255 - resized`.
+    - *Version 2.0*:
+      - Dùng phân ngưỡng Otsu tự động nhị phân hóa và đảo màu để xóa bóng mờ/nhiễu.
+      - Tìm contour cắt sát nét chữ (Bounding Box Crop) để loại bỏ viền trắng thừa.
+      - Căn giữa chữ vào khung hình vuông để tránh méo đặc trưng khi resize.
+      - Thêm padding viền an toàn $15\%$ trước khi resize về $28 \times 28$.
+  - **[CELL 19](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md#L1160-L1305) (Hàm `predict_from_canvas` vẽ tay)**:
+    - *Version 1.0*: Chỉ resize trực tiếp canvas về $28 \times 28$ và đảo màu đơn giản.
+    - *Version 2.0*: Tích hợp toàn bộ quy trình tiền xử lý nâng cao tương tự `preprocess_image` (Otsu, Contour Crop, Square Centering, Padding $15\%$) giúp chữ vẽ tay tự động được căn chỉnh chuẩn hóa trước khi đưa vào mô hình.
 - **Kết quả**: Giải quyết triệt để hiện tượng Overfitting, mô hình đạt khả năng tổng quát hóa thực tế cực cao, nhận dạng hoàn hảo ảnh chữ viết ngoài đời thực và trên canvas vẽ tay.
 
 ---
