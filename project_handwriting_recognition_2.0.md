@@ -8,18 +8,30 @@
 
 ---
 
+## 📝 Tóm Tắt Phiên Bản 2.0 (Cải Tiến & Chống Overfitting)
+- **Trạng thái**: Phiên bản nâng cấp tối ưu (Version 2.0).
+- **Cải tiến so với [Version 1.0](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_1.0.md)**:
+  1. **Khắc phục lỗi dữ liệu**: Hoán đổi trục đứng/ngang (`np.transpose`) để đưa tập ảnh EMNIST về đúng chiều đứng thẳng tự nhiên, giúp mô hình học ký tự thực tế chính xác hơn.
+  2. **Data Augmentation (Tăng cường dữ liệu)**: Tích hợp các lớp Random Rotation, Translation, và Zoom ngẫu nhiên vào mô hình để tăng tính tổng quát hóa.
+  3. **Regularization (Ràng buộc trọng số)**: Thêm L2 Regularization (`l2(1e-4)`) cho toàn bộ lớp Conv2D và Dense, kết hợp Dropout tinh chỉnh nâng cao.
+  4. **Tiền xử lý ảnh nâng cao**: Binarize bằng Otsu khử nhiễu nền, tìm contour cắt sát nét chữ (Bounding Box Crop), và căn lề khung vuông kèm padding viền đen 15%.
+  5. **Tối ưu huấn luyện**: Tăng số lượng epoch và tối ưu hóa Early Stopping để tự động dừng ở điểm tốt nhất.
+- **Kết quả**: Giải quyết triệt để hiện tượng Overfitting, mô hình đạt khả năng tổng quát hóa thực tế cực cao, nhận dạng hoàn hảo ảnh chữ viết ngoài đời thực và trên canvas vẽ tay.
+
+---
+
 ## 📈 So Sánh Các Điểm Cải Tiến vs Version 1.0
 
 Dưới đây là bảng tổng hợp các điểm cải tiến của phiên bản 2.0 so với [version 1.0](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_1.0.md):
 
-| Khía cạnh so sánh | Phiên bản 1.0 | Phiên bản 2.0 (Cải tiến) | Tác dụng & Ý nghĩa cải tiến | Liên kết mã nguồn |
-| :--- | :--- | :--- | :--- | :--- |
-| **Xử lý xoay dữ liệu gốc (EMNIST)** | Load dữ liệu thô và huấn luyện trực tiếp. Ảnh mặc định bị xoay ngang 90° và lật do định dạng của dataset. | Sử dụng `np.transpose(X, (0, 2, 1))` để hoán đổi trục đứng/ngang cho cả tập Train và Test ngay sau khi tải. | **Tránh "Bẫy xoay ảnh EMNIST"**: Đưa dữ liệu huấn luyện về đúng chiều đọc thẳng đứng tự nhiên, giúp mô hình học ký tự thực tế chính xác hơn. | [project_handwriting_recognition_2.0.md:L197-202](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md#L197-L202) |
-| **Tăng cường dữ liệu (Data Augmentation)** | Không sử dụng. Mô hình dễ bị overfitting do dữ liệu tĩnh quá hoàn hảo. | Tích hợp lớp Augmentation (`RandomRotation`, `RandomTranslation`, `RandomZoom` tối đa 8-10%) trực tiếp vào đầu mô hình. | **Tăng tính tổng quát hóa**: Tạo ra vô số biến thể ngẫu nhiên khi huấn luyện (xoay nhẹ, dịch chuyển lệch tâm, thu phóng) mà không tốn chi phí thu thập thêm ảnh thực tế. | [project_handwriting_recognition_2.0.md:L373-383](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md#L373-L383) |
-| **Ràng buộc trọng số (Regularization)** | Không sử dụng L2 Regularization. Chỉ sử dụng Dropout cố định (0.25 ở Conv, 0.5 ở Dense). | - Thêm **L2 Regularization** (`l2(1e-4)`) vào tất cả các lớp Conv2D và Dense.<br>- Tinh chỉnh Dropout tăng dần theo chiều sâu (0.2 $\rightarrow$ 0.25 $\rightarrow$ 0.3 ở Conv) và giảm xuống 0.4 ở Dense. | **Chống Overfitting chiều sâu**: Phạt trọng số lớn để giữ mô hình không quá nhạy cảm với nhiễu hoặc nét bút đậm nhạt khác nhau. Tối ưu hóa Dropout giúp mô hình hội tụ tốt hơn. | [project_handwriting_recognition_2.0.md:L385-430](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md#L385-L430) |
-| **Quy trình Tiền xử lý ảnh thực tế (`preprocess_image`)** | **Đơn giản:**<br>1. Chuyển xám.<br>2. Resize trực tiếp về 28x28.<br>3. Đảo màu đơn giản bằng phép trừ `255 - resized`. | **Nâng cao:**<br>1. Phân ngưỡng Otsu tự động binarize và đảo màu.<br>2. Crop sát chữ viết (Bounding Box).<br>3. Căn giữa khung vuông để bảo toàn tỷ lệ (Aspect Ratio).<br>4. Thêm viền đệm an toàn (Padding ~15%). | **Xóa nhiễu & Tránh méo hình học**: Loại bỏ hoàn toàn bóng mờ/vết bẩn trên giấy. Căn lề và tạo viền đen giúp cấu trúc ảnh thực tế tương thích 100% với phân phối của bộ EMNIST. | [project_handwriting_recognition_2.0.md:L745-802](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md#L745-L802) |
-| **Ứng dụng Canvas vẽ tay Colab (`predict_from_canvas`)** | Vẽ canvas $\rightarrow$ Resize thẳng về 28x28 $\rightarrow$ Đảo màu đơn giản. Tỷ lệ đoán trúng thấp nếu vẽ lệch tâm hoặc nét nhỏ. | Tích hợp toàn bộ pipeline tiền xử lý nâng cao (Otsu, Contour Crop, Square Centering, Padding) vào hàm nhận dạng từ canvas. | **Nâng cao trải nghiệm người dùng**: Chữ vẽ tay trên canvas dù to, nhỏ, lệch góc vẫn được tự động định vị lại hoàn hảo trước khi đưa vào mô hình, tăng tỷ lệ đoán đúng thực tế. | [project_handwriting_recognition_2.0.md:L1104-1148](file:///d:/AI%20Engineer/AIE_Knowledge/project_handwriting_recognition_2.0.md#L1104-L1164) |
-| **Cơ chế dừng sớm (Early Stopping)** | Có Early Stopping nhưng chưa tối ưu số lượng Epoch tối đa. | Tăng số Epoch tối đa lên `40` để `EarlyStopping` tự động quyết định điểm dừng tốt nhất và phục hồi trọng số tốt nhất. | **Tiết kiệm thời gian & Tránh học vẹt**: Ngăn chặn mô hình tiếp tục học thuộc lòng khi Loss trên tập kiểm thử (Validation Loss) bắt đầu tăng ngược trở lại. | [overfitting_solution_log_2.0.md:L158-170](file:///d:/AI%20Engineer/AIE_Knowledge/overfitting_solution_log_2.0.md#L158-L170) |
+| Khía cạnh so sánh | Phiên bản 1.0 | Phiên bản 2.0 (Cải tiến) | Tác dụng & Ý nghĩa cải tiến |
+| :--- | :--- | :--- | :--- |
+| **Xử lý xoay dữ liệu gốc (EMNIST)** | Load dữ liệu thô và huấn luyện trực tiếp. Ảnh mặc định bị xoay ngang 90° và lật do định dạng của dataset. | Sử dụng `np.transpose(X, (0, 2, 1))` để hoán đổi trục đứng/ngang cho cả tập Train và Test ngay sau khi tải. | **Tránh "Bẫy xoay ảnh EMNIST"**: Đưa dữ liệu huấn luyện về đúng chiều đọc thẳng đứng tự nhiên, giúp mô hình học ký tự thực tế chính xác hơn. |
+| **Tăng cường dữ liệu (Data Augmentation)** | Không sử dụng. Mô hình dễ bị overfitting do dữ liệu tĩnh quá hoàn hảo. | Tích hợp lớp Augmentation (`RandomRotation`, `RandomTranslation`, `RandomZoom` tối đa 8-10%) trực tiếp vào đầu mô hình. | **Tăng tính tổng quát hóa**: Tạo ra vô số biến thể ngẫu nhiên khi huấn luyện (xoay nhẹ, dịch chuyển lệch tâm, thu phóng) mà không tốn chi phí thu thập thêm ảnh thực tế. |
+| **Ràng buộc trọng số (Regularization)** | Không sử dụng L2 Regularization. Chỉ sử dụng Dropout cố định (0.25 ở Conv, 0.5 ở Dense). | - Thêm **L2 Regularization** (`l2(1e-4)`) vào tất cả các lớp Conv2D và Dense.<br>- Tinh chỉnh Dropout tăng dần theo chiều sâu (0.2 $\rightarrow$ 0.25 $\rightarrow$ 0.3 ở Conv) và giảm xuống 0.4 ở Dense. | **Chống Overfitting chiều sâu**: Phạt trọng số lớn để giữ mô hình không quá nhạy cảm với nhiễu hoặc nét bút đậm nhạt khác nhau. Tối ưu hóa Dropout giúp mô hình hội tụ tốt hơn. |
+| **Quy trình Tiền xử lý ảnh thực tế (`preprocess_image`)** | **Đơn giản:**<br>1. Chuyển xám.<br>2. Resize trực tiếp về 28x28.<br>3. Đảo màu đơn giản bằng phép trừ `255 - resized`. | **Nâng cao:**<br>1. Phân ngưỡng Otsu tự động binarize và đảo màu.<br>2. Crop sát chữ viết (Bounding Box).<br>3. Căn giữa khung vuông để bảo toàn tỷ lệ (Aspect Ratio).<br>4. Thêm viền đệm an toàn (Padding ~15%). | **Xóa nhiễu & Tránh méo hình học**: Loại bỏ hoàn toàn bóng mờ/vết bẩn trên giấy. Căn lề và tạo viền đen giúp cấu trúc ảnh thực tế tương thích 100% với phân phối của bộ EMNIST. |
+| **Ứng dụng Canvas vẽ tay Colab (`predict_from_canvas`)** | Vẽ canvas $\rightarrow$ Resize thẳng về 28x28 $\rightarrow$ Đảo màu đơn giản. Tỷ lệ đoán trúng thấp nếu vẽ lệch tâm hoặc nét nhỏ. | Tích hợp toàn bộ pipeline tiền xử lý nâng cao (Otsu, Contour Crop, Square Centering, Padding) vào hàm nhận dạng từ canvas. | **Nâng cao trải nghiệm người dùng**: Chữ vẽ tay trên canvas dù to, nhỏ, lệch góc vẫn được tự động định vị lại hoàn hảo trước khi đưa vào mô hình, tăng tỷ lệ đoán đúng thực tế. |
+| **Cơ chế dừng sớm (Early Stopping)** | Có Early Stopping nhưng chưa tối ưu số lượng Epoch tối đa. | Tăng số Epoch tối đa lên `40` để `EarlyStopping` tự động quyết định điểm dừng tốt nhất và phục hồi trọng số tốt nhất. | **Tiết kiệm thời gian & Tránh học vẹt**: Ngăn chặn mô hình tiếp tục học thuộc lòng khi Loss trên tập kiểm thử (Validation Loss) bắt đầu tăng ngược trở lại. |
 
 ---
 
@@ -363,6 +375,89 @@ Giá trị pixel: min=0.0, max=1.0
 ```
 
 ---
+
+## 🔍 Nhật Ký Tư Duy & Giải Pháp Khắc Phục Overfitting
+
+Trong quá trình phát triển dự án từ Version 1.0, thách thức lớn nhất mà mô hình gặp phải là **Overfitting (Quá khớp)** và khả năng nhận dạng kém trên dữ liệu vẽ thực tế. Dưới đây là toàn bộ nhật ký tư duy phân tích, cách lựa chọn giải pháp và khắc phục các "bẫy" thực tế của một kỹ sư AI.
+
+### 1. Sơ Đồ Tư Duy Phân Tích & Giải Quyết Overfitting
+
+```mermaid
+graph TD
+    A[Phát Hiện Triệu Chứng: Overfitting] --> B[Phân Tích Nguyên Nhân Cốt Lõi]
+    B --> B1[Kiến trúc model quá mạnh / Quá nhiều params]
+    B --> B2[Thiếu sự đa dạng trong dữ liệu training]
+    B --> B3[Thời gian train quá lâu - Học thuộc lòng]
+    
+    C[Đề Xuất Các Giải Pháp Thoát Overfitting] --> D[So Sánh & Lựa Chọn Giải Pháp Tối Ưu]
+    
+    D --> E1[Ưu tiên 1: Data Augmentation - Tăng tính tổng quát hóa]
+    D --> E2[Ưu tiên 2: Ràng buộc trọng số - Dropout & L2]
+    D --> E3[Ưu tiên 3: Early Stopping - Dừng đúng lúc]
+    D --> E4[Ưu tiên 4: Sửa lỗi xoay ảnh & Tiền xử lý nâng cao]
+    
+    E1 & E2 & E3 & E4 --> F[Mô Hình Đạt Generalization Thực Tế Tối Đa]
+```
+
+### 2. Các Lựa Chọn Thuật Toán & Kỹ Thuật Tránh Overfitting
+
+Chúng tôi đã xem xét 5 kỹ thuật phổ biến nhất trong Deep Learning và phân loại tác động của chúng:
+
+| STT | Kỹ thuật | Nhóm giải pháp | Cơ chế hoạt động |
+| :--- | :--- | :--- | :--- |
+| **1** | **Data Augmentation** (Tăng cường dữ liệu) | Tác động vào **Dữ liệu** | Tự động tạo ra các biến thể mới của ảnh gốc (xoay, dịch chuyển, thu phóng, làm méo) trong quá trình train. |
+| **2** | **Dropout** (Tắt neuron ngẫu nhiên) | Tác động vào **Kiến trúc** | Tắt ngẫu nhiên một tỷ lệ phần trăm neuron trong mỗi bước train. Ép các neuron khác gánh vác nhiệm vụ, tránh phụ thuộc vào một nhóm cố định. |
+| **3** | **Early Stopping** (Dừng sớm) | Tác động vào **Quá trình Train** | Theo dõi `val_loss`. Nếu sau một số epoch liên tiếp (`patience`) mà `val_loss` không giảm thêm, hệ thống sẽ tự dừng và khôi phục lại trọng số tốt nhất. |
+| **4** | **L2 Regularization** (Phạt trọng số) | Tác động vào **Hàm Loss** | Cộng thêm một lượng phạt vào hàm Loss dựa trên độ lớn của các trọng số ($w$). Ép mô hình giữ các trọng số nhỏ, tránh việc quá nhạy cảm với nhiễu. |
+| **5** | **Giản lược mô hình** (Simplify Architecture) | Tác động vào **Kiến trúc** | Giảm số lượng lớp Conv2D hoặc Dense để giảm dung lượng bộ nhớ của mạng. |
+
+### 3. Phân Tích Lựa Chọn Giải Pháp
+
+Tại sao chúng tôi chọn kết hợp **Data Augmentation** + **Dropout & L2 Regularization** + **Early Stopping** mà không phải phương án khác?
+
+- **Tại sao Data Augmentation làm cốt lõi?** Chữ viết tay thực tế của mỗi người khác nhau ở **góc nghiêng**, **vị trí đặt bút (lệch tâm)** và **độ to nhỏ (scale)**. Khi áp dụng các phép xoay, dịch chuyển và zoom ngẫu nhiên khi train, mô hình sẽ học được tính chất **"bất biến đối với các phép biến đổi hình học"**, tăng tính tổng quát hóa thực tế mà không cần tốn chi phí đi thu thập thêm ảnh.
+- **Tại sao dùng L2 Regularization kết hợp Dropout?** Dropout cực kỳ hiệu quả đối với các lớp Dense cuối mạng (nơi tập trung nhiều tham số nhất). Trong khi đó, L2 Regularization (Weight Decay) thêm hệ số phạt vào tất cả các lớp Conv2D và Dense, buộc các trọng số nhỏ lại, ngăn mô hình phản ứng quá nhạy cảm với các biến đổi hoặc nhiễu trong nét viết thực tế.
+- **Tại sao dùng Early Stopping?** Nó hoạt động như một chiếc phanh tự động giúp ngăn mô hình tiếp tục học thuộc lòng khi Loss trên tập kiểm thử (Validation Loss) bắt đầu tăng ngược trở lại, đồng thời giúp tiết kiệm thời gian chạy GPU.
+- **Tại sao KHÔNG chọn giản lược mô hình?** Bộ dataset EMNIST Balanced có tới **47 classes** (chữ số + chữ cái viết hoa + chữ cái viết thường dễ nhầm lẫn). Đây là bài toán phân loại tương đối phức tạp. Nếu giảm bớt số lượng lớp hoặc neuron quá nhiều, mô hình sẽ rơi vào trạng thái **Underfitting (Chưa học đủ tốt)**.
+
+---
+
+### 4. Phát Hiện & Giải Quyết 3 "Cái Bẫy" Chí Mạng Trên Thực Tế
+
+Khi thử nghiệm nhận dạng trên bộ dữ liệu thực tế (`DataTest`), chúng tôi phát hiện ra **3 cái bẫy** lớn khiến mô hình hoạt động rất tốt khi train/val nhưng lại dự đoán sai trên thực tế:
+
+```mermaid
+graph TD
+    A[Vẫn Lỗi Trên DataTest] --> B[Kiểm Tra Thực Tế & Phát Hiện Bẫy]
+    B --> B1[Bẫy 1: EMNIST bị Xoay 90 độ & Lật khi load]
+    B --> B2[Bẫy 2: Tiền xử lý làm Méo chữ & Giữ lại Nhiễu nền]
+    B --> B3[Bẫy 3: Trọng số nhạy cảm do Thiếu L2 Regularization]
+    
+    C[Giải Pháp Kỹ Thuật Khắc Phục]
+    B1 --> C1[Dùng np.transpose xoay dữ liệu Train về chiều thẳng đứng]
+    B2 --> C2[Binarize Otsu + Crop Bounding Box + Padding Căn Giữa]
+    B3 --> C3[Thêm Weight Decay L2 1e-4 vào các lớp Conv/Dense]
+    
+    C1 & C2 & C3 --> D[Mô Hình Đạt Generalization Thực Tế Tối Đa]
+```
+
+#### 🔄 Bẫy 1: "EMNIST Transpose Trap" (Ảnh bị xoay và lật)
+- **Vấn đề**: Định dạng lưu trữ gốc của EMNIST bị đảo ngược trục dòng và cột. Khi load bằng thư viện, ảnh thực tế bị xoay ngang 90 độ và lật ngược. Khi ta train trực tiếp, mô hình thực chất học nhận dạng **chữ bị xoay ngang**. Do đó khi đưa ảnh thực tế viết thẳng đứng vào, mô hình đoán sai hoàn toàn.
+- **Giải pháp**: Sử dụng `np.transpose(X, (0, 2, 1))` hoán đổi trục đứng/ngang cho tập Train và Test ngay sau khi tải. Điều này giúp ảnh đưa về đúng chiều đứng thẳng tự nhiên (xem chi tiết ở **Bước 3**).
+
+#### 🖼️ Bẫy 2: "Distortion & Noise Preprocessing" (Méo ảnh và nhiễu nền)
+- **Vấn đề**: 
+  1. *Méo chữ*: Resize trực tiếp ảnh hình chữ nhật (4:3 hoặc 16:9) về `28x28` khiến chữ bị bóp dẹt, méo đặc trưng hình học.
+  2. *Nhiễu nền*: Ảnh chụp thực tế thường có bóng mờ, vết bẩn. Đảo màu đơn giản `255 - resized` biến các vùng xám này thành nhiễu sáng gây mờ nét chữ.
+  3. *Thiếu viền đệm*: Dataset EMNIST có khoảng viền đen bao quanh chữ (10-15%). Chữ vẽ sát biên sẽ làm giảm độ chính xác.
+- **Giải pháp**: Xây dựng pipeline tiền xử lý ảnh nâng cao:
+  - Phân ngưỡng Otsu tự động nhị phân hóa để làm sạch bóng mờ và đảo màu nền đen chữ trắng hoàn hảo.
+  - Tìm contour để crop sát nét chữ (Bounding Box Crop).
+  - Đưa chữ vào giữa khung vuông rồi thêm viền đệm (Padding ~15%) để giữ nguyên tỷ lệ, tương thích 100% với phân phối của EMNIST (xem chi tiết ở **Bước 13** và **Bước 17**).
+
+#### 🧠 Bẫy 3: "Under-regularization" (Ràng buộc mô hình chưa đủ)
+- **Vấn đề**: Các nét viết tay thực tế có độ biến thiên lớn (nét đậm, nhạt, đứt nét). Việc chỉ dùng Dropout ở cuối mạng chưa đủ ngăn các neuron trích xuất đặc trưng Conv2D học thuộc các mẫu pixel nhiễu.
+- **Giải pháp**: Thêm hình phạt L2 (`l2(1e-4)`) vào toàn bộ các lớp Conv2D và Dense để ép mô hình giữ các trọng số nhỏ, tránh phản ứng quá nhạy với thay đổi nét viết (xem chi tiết ở **Bước 6**).
 
 ---
 
